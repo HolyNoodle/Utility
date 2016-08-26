@@ -207,7 +207,8 @@ In this file the structure is a Dictionnary<string, string>
   "Delete": "Delete",
 }
 ```
-**Important : This file copy local property must be set to always**
+**Important : This file copy local property must be set to always.**
+
 **Important bis: This file is loaded at the runtime, so any changes done after the runtime will not be impacted since you rerun your code**
 
 You have to init the LocalisationHelper.
