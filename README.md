@@ -219,8 +219,8 @@ protected void Application_Start()
     BundleConfig.RegisterBundles(BundleTable.Bundles);
 
     HolyNoodle.Utility.LocalisationHelper.Init("en", HolyNoodle.Utility.ApplicationType.Web); //default language en
-    //You can set the language files path using the parameter languageFilePath
-    //HolyNoodle.Utility.LocalisationHelper.Init("en", HolyNoodle.Utility.ApplicationType.Web, languageFilePath: "path");
+    //You can set the language files path using the parameter languageFileDirectory
+    //HolyNoodle.Utility.LocalisationHelper.Init("en", HolyNoodle.Utility.ApplicationType.Web, languageFileDirectory: "path");
 }
 ```
 HolyNoodle.Utility.ApplicationType provide 2 values: Web (for websites, webapis and so on...) and StandAlone for executables (.exe).
