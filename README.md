@@ -136,6 +136,52 @@ Now let's see how to use this classes
   }
 ```
 
-### Advanced concept
+## Advanced concept
 
-Comming soon
+### ProcedureBinder
+The procedureBinder attribute allows you to bind a property of a model to a procedure in order to load the property from the procedure when you want
+
+First of all, the procedure object to bind to a property 
+```C#
+  public class GetUserRightsFromId : IDbProcedure
+  {
+      public string Procedure
+      {
+          get
+          {
+              return "ps_UserRights_Get_FromId";
+          }
+      }
+
+      [DalAttribute("id")]
+      public int UserId { get; set; }
+  }
+```
+Then the binding in the model
+```C#
+  public class User: IDalObject
+    {
+        [DalAttribute("Id")]
+        public int Id { get; set; }
+        
+        [ProcedureBinder(BindedProcedure = typeof(GetUserRightsFromId), BindedProcedurePropertyName = "UserId", BindedSourcePropertyName = "Id", AutoBind = true)]
+        public List<Right> RightList { get; set; }
+    }
+```
+You are binding the property RightList to the procedure GetUserRightsFromId. The parameter of the procedure UserId is set to the value of the property Id in the User instance.
+**The AutoBind property is set to false by default. If set to true, whenever the AzureDB object cross a ProcedureBinder with AutoBind true, it will execute the binded procedure. Care for the performance of your code**
+
+You can manually refresh a binding by using this code 
+```C#
+static void main(string[] args)
+{
+  var db = new AzureDb("connection string");
+  var user = new User() 
+  {
+    Id = 1;
+  };
+  await db.RefreshBinding(user, "RightList");
+}
+```
+
+
