@@ -115,7 +115,7 @@ Now let's see how to use this classes
 ```C#
   static void main(string[] args)
   {
-    var db = new AzureDb("connection string");
+    var db = new AzureDb("connection string"); //do not provide the parameter if you use configuration file
     
     var users = db.Execute<User>(new GetUsers());
     //this will execute the procedure "ps_User_Get" and return a list of User 
@@ -175,7 +175,7 @@ You can manually refresh a binding by using this code
 ```C#
 static void main(string[] args)
 {
-  var db = new AzureDb("connection string");
+  var db = new AzureDb("connection string"); //do not provide the parameter if you use configuration file
   var user = new User() 
   {
     Id = 1;
@@ -184,4 +184,51 @@ static void main(string[] args)
 }
 ```
 
+# LocalisationHelper Documentation
 
+This is quite simple
+
+## The Files
+create files according o this pattern language.*.json
+The * must be replace by the language o the file
+language.fr.json
+language.en.json
+language.ru.json
+...
+
+In this file the structure is a Dictionnary<string, string>
+```json
+{
+  "LoginText": "this is the login form",
+  "Logout": "please logout before exiting",
+  "Home": "Home page",
+  "Password": "Password",
+  "Edit": "Edit",
+  "Delete": "Delete",
+}
+```
+
+You have to init the LocalisationHelper
+In website i put it in the Global.asax for example
+```C#
+protected void Application_Start()
+{
+    GlobalConfiguration.Configure(WebApiConfig.Register);
+    FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
+    RouteConfig.RegisterRoutes(RouteTable.Routes);
+    BundleConfig.RegisterBundles(BundleTable.Bundles);
+
+    HolyNoodle.Utility.LocalisationHelper.Init("en", HolyNoodle.Utility.ApplicationType.Web); //default language en
+}
+```
+HolyNoodle.Utility.ApplicationType provide 2 values: Web (for websites, webapis and so on...) and StandAlone for executables (.exe).
+
+The ChangeLanguage method allows you to change the user language
+```C#
+  HolyNoodle.Utility.LocalisationHelper.ChangeLanguage(new System.Globalization.CultureInfo("fr-fr"))
+```
+
+Finally, the GetText method give you the right translation for the key
+```C#
+  var translation = HolyNoodle.Utility.LocalisationHelper.GetText("Login");
+```
