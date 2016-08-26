@@ -85,7 +85,7 @@ namespace HolyNoodle.Utility
             return string.Empty;
         }
 
-        public static void Init(string defaultLanguage, ApplicationType applicationType = ApplicationType.StandAlone, string languageFilePath = string.Empty)
+        public static void Init(string defaultLanguage, ApplicationType applicationType = ApplicationType.StandAlone, string languageFilePath = "")
         {
             _texts = new Dictionary<string, Dictionary<string, string>>();
             _files = new Dictionary<FileInfo, DateTime>();
