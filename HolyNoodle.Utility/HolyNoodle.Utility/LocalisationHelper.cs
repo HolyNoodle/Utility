@@ -21,6 +21,8 @@ namespace HolyNoodle.Utility
 
         public static ILocalisationProvider Provider { get; set; }
 
+        public static string LanguageFilePath { get; set; }
+
         private static void LoadFile(string language, FileInfo languageFile = null)
         {
             //If language file is not given, we already have the data
@@ -83,7 +85,7 @@ namespace HolyNoodle.Utility
             return string.Empty;
         }
 
-        public static void Init(string defaultLanguage, ApplicationType applicationType = ApplicationType.StandAlone)
+        public static void Init(string defaultLanguage, ApplicationType applicationType = ApplicationType.StandAlone, string languageFilePath = string.Empty)
         {
             _texts = new Dictionary<string, Dictionary<string, string>>();
             _files = new Dictionary<FileInfo, DateTime>();
@@ -98,7 +100,11 @@ namespace HolyNoodle.Utility
                     break;
             }
 
-            foreach(var file in Directory.GetFiles(Utility.AssemblyDirectory, "language.*.json", SearchOption.AllDirectories))
+            var filesPath = Utility.AssemblyDirectory;
+            if (languageFilePath != string.Empty)
+                filesPath = languageFilePath;
+
+            foreach (var file in Directory.GetFiles(filesPath, "language.*.json", SearchOption.AllDirectories))
             {                
                 var fileTab = file.Split('.');
                 var language = fileTab[fileTab.Length - 2];
