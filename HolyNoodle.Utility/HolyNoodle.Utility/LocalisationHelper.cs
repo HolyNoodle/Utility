@@ -15,7 +15,7 @@ namespace HolyNoodle.Utility
     public static class LocalisationHelper
     {
         private static Dictionary<string, Dictionary<string, string>> _texts;
-        private static Dictionary<FileInfo, DateTime> _files;
+        private static Dictionary<string, FileInfo> _files;
 
         public static string DefaultLanguage { get; private set; }
 
@@ -23,32 +23,21 @@ namespace HolyNoodle.Utility
 
         public static string LanguageFilePath { get; set; }
 
-        private static void LoadFile(string language, FileInfo languageFile = null)
+        private static void LoadFile(string language, FileInfo languageFile)
         {
-            //If language file is not given, we already have the data
-            //Then get the language file from the _files dictionary
-            //else initialise the language file
-            if(languageFile == null)
+            _files.Add(language, languageFile);
+
+            if (!_texts.ContainsKey(language))
             {
-                languageFile = _files.FirstOrDefault(kv => kv.Key.Name == "language." + language + ".json").Key;
+                _texts.Add(language, new Dictionary<string, string>());
             }
             else
             {
-                _files.Add(languageFile, DateTime.MinValue);
+                _texts[language].Clear();
             }
-            var lastWriteDate = new FileInfo(languageFile.FullName).LastWriteTimeUtc;
 
-            var lastRefreshed = _files[languageFile];
-            if (lastWriteDate.Millisecond != lastRefreshed.Millisecond)
-            {
-                if (!_texts.ContainsKey(language))
-                {
-                    _texts.Add(language, new Dictionary<string, string>());
-                }
-                var translations = File.ReadAllText(languageFile.FullName);
-                _files[languageFile] = lastWriteDate;
-                LoadData(translations, language);
-            }
+            var translations = File.ReadAllText(languageFile.FullName);
+            LoadData(translations, language);
         }
 
         private static void LoadData(string text, string language)
@@ -66,18 +55,17 @@ namespace HolyNoodle.Utility
         public static string GetText(string label)
         {
             var language = Provider.GetLanguage().Name.ToLower().Split('-')[0];
-            if(language == null || !_texts.ContainsKey(language))
+            if (language == null || !_texts.ContainsKey(language))
             {
                 language = DefaultLanguage;
             }
-            LoadFile(language);
-            
-            if(_texts[language].ContainsKey(label))
+
+            if (_texts[language].ContainsKey(label))
             {
                 return _texts[language][label];
             }
 
-            if(_texts[DefaultLanguage].ContainsKey(label))
+            if (_texts[DefaultLanguage].ContainsKey(label))
             {
                 return _texts[DefaultLanguage][label];
             }
@@ -88,7 +76,7 @@ namespace HolyNoodle.Utility
         public static void Init(string defaultLanguage, ApplicationType applicationType = ApplicationType.StandAlone, string languageFileDirectory = "")
         {
             _texts = new Dictionary<string, Dictionary<string, string>>();
-            _files = new Dictionary<FileInfo, DateTime>();
+            _files = new Dictionary<string, FileInfo>();
             DefaultLanguage = defaultLanguage;
             switch (applicationType)
             {
@@ -106,7 +94,7 @@ namespace HolyNoodle.Utility
 
             foreach (var file in Directory.GetFiles(filesPath, "language.*.json", SearchOption.AllDirectories))
             {
-                var fi = new FileInfo(file);     
+                var fi = new FileInfo(file);
                 var fileTab = fi.Name.Split('.');
                 var language = fileTab[fileTab.Length - 2];
                 LoadFile(language, fi);
@@ -115,7 +103,7 @@ namespace HolyNoodle.Utility
 
         public static IEnumerable<CultureInfo> GetLanguages()
         {
-            foreach(var lang in _texts.Keys)
+            foreach (var lang in _texts.Keys)
             {
                 yield return new CultureInfo(lang);
             }
