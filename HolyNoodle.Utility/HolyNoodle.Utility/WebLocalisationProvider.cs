@@ -11,9 +11,9 @@ namespace HolyNoodle.Utility
     {
         public CultureInfo GetLanguage()
         {
-            if(System.Web.HttpContext.Current.Session["assulab:LocalisationLanguage"] != null)
+            if(System.Web.HttpContext.Current.Session["holynoodle:LocalisationLanguage"] != null)
             {
-                return (CultureInfo)System.Web.HttpContext.Current.Session["assulab:LocalisationLanguage"];
+                return (CultureInfo)System.Web.HttpContext.Current.Session["holynoodle:LocalisationLanguage"];
             }
             if (System.Web.HttpContext.Current.Request.UserLanguages != null && System.Web.HttpContext.Current.Request.UserLanguages.Any())
             {
@@ -24,7 +24,7 @@ namespace HolyNoodle.Utility
 
         public void SetLanguage(CultureInfo culture)
         {
-            System.Web.HttpContext.Current.Session["assulab:LocalisationLanguage"] = culture;
+            System.Web.HttpContext.Current.Session["holynoodle:LocalisationLanguage"] = culture;
         }
     }
 }

@@ -21,16 +21,16 @@ namespace HolyNoodle.Utility.DAL
         static AzureDb()
         {
             ConnectionString = "";
-            if (ConfigurationManager.AppSettings["assulab:DefaultConnectionString"] != null)
+            if (ConfigurationManager.AppSettings["holynoodle:DefaultConnectionString"] != null)
             {
-                ConnectionString = ConfigurationManager.ConnectionStrings[ConfigurationManager.AppSettings["assulab:DefaultConnectionString"]].ConnectionString;
+                ConnectionString = ConfigurationManager.ConnectionStrings[ConfigurationManager.AppSettings["holynoodle:DefaultConnectionString"]].ConnectionString;
             }
             UseCache = false;
 
-            if (ConfigurationManager.AppSettings["assulab:CacheProvider"] != null)
+            if (ConfigurationManager.AppSettings["holynoodle:CacheProvider"] != null)
             {
                 UseCache = true;
-                var typeName = ConfigurationManager.AppSettings["assulab:CacheProvider"];
+                var typeName = ConfigurationManager.AppSettings["holynoodle:CacheProvider"];
                 var type = Assembly.GetExecutingAssembly().GetTypes().FirstOrDefault(t => t.FullName == typeName);
                 if (type != null)
                 {
@@ -45,7 +45,7 @@ namespace HolyNoodle.Utility.DAL
                 }
                 else
                 {
-                    throw new Exception("Type '" + ConfigurationManager.AppSettings["assulab:CacheProvider"] + "' not found.");
+                    throw new Exception("Type '" + ConfigurationManager.AppSettings["holynoodle:CacheProvider"] + "' not found.");
                 }
             }
         }
