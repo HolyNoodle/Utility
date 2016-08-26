@@ -208,8 +208,8 @@ In this file the structure is a Dictionnary<string, string>
 }
 ```
 
-You have to init the LocalisationHelper
-In website i put it in the Global.asax for example
+You have to init the LocalisationHelper.
+In a website i put it in the Global.asax, for example :
 ```C#
 protected void Application_Start()
 {
@@ -219,6 +219,8 @@ protected void Application_Start()
     BundleConfig.RegisterBundles(BundleTable.Bundles);
 
     HolyNoodle.Utility.LocalisationHelper.Init("en", HolyNoodle.Utility.ApplicationType.Web); //default language en
+    //You can set the language files path using the parameter languageFilePath
+    //HolyNoodle.Utility.LocalisationHelper.Init("en", HolyNoodle.Utility.ApplicationType.Web, languageFilePath: "path");
 }
 ```
 HolyNoodle.Utility.ApplicationType provide 2 values: Web (for websites, webapis and so on...) and StandAlone for executables (.exe).
