@@ -184,6 +184,76 @@ static void main(string[] args)
 }
 ```
 
+### Validation
+In order to validate procedure parameters you can implement IDbValidator on your procedure.
+For example :
+```C#
+  public Tuple<bool, Dictionary<string, string>> Validate(AzureDb context)
+  {
+      var message = new Dictionary<string, string>();
+
+      if (Login == null || Login == string.Empty)
+      {
+          message.Add("Login", "IsNull");
+      }
+      else
+      {
+          if (!CheckLength(Login))
+          {
+              message.Add("Login", "TooShort");
+          }
+          if (!CheckLoginCharacters(Login))
+          {
+              message.Add("Login", "UnwantedCharacters");
+          }
+      }
+      if (Password == null || Password == string.Empty)
+      {
+          message.Add("Password", "IsNull");
+      }
+      else
+      {
+          if (!CheckLength(Password))
+          {
+              message.Add("Password", "TooShort");
+          }
+      }
+      if (string.IsNullOrEmpty(Email))
+      {
+          message.Add("Email", "IsNull");
+      }
+      else
+      {
+          if(!CheckEmail(Email))
+          {
+              message.Add("Email", "WrongFormat");
+          }
+      }
+      
+      return new Tuple<bool, Dictionary<string, string>>(message.Count == 0, message);
+  }
+```
+When the Dal validates to procedure, if there is errors an **AzureDbValidationException** will be throw with the data of the errors.
+
+### Cache
+**Warning : This feature hasn't been tested in every case.**
+
+You can provide a cache provider using configuration file :
+```xml
+<appSettings>
+  <add key="holynoodle:CacheProvider" value="HolyNoodle.Utility.DAL.BaseCacheProvider" />
+</appSettings>
+```
+This line allows the DAL to use the **BaseCacheProvider**. In this line, the Dal expect a class implementing the **ICacheProvider** interface.
+
+You can provide a custom cache provider.
+
+You can bind procedures to clear others procedure cache. For example, you have a GetUsers procedures that returns the list of all users in your database. When you call AddUser, you need to uncache GetUsers in order to refresh datas.
+```C#
+  [CacheObject(typeof(GetUsers))]
+  public class AddUser : IDbProcedure
+```
+
 # LocalisationHelper Documentation
 
 This is quite simple
