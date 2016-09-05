@@ -66,6 +66,7 @@ namespace HolyNoodle.Utility.DAL
         {
             SqlConnection connection = new SqlConnection(_connectionString);
             var attempt = 0;
+            Exception connectionError = null;
             while (connection.State != ConnectionState.Open && attempt < 3)
             {
                 try
@@ -75,6 +76,7 @@ namespace HolyNoodle.Utility.DAL
                 }
                 catch (Exception e)
                 {
+                    connectionError = e;
                 }
             }
             if (connection.State != ConnectionState.Open)
@@ -85,7 +87,7 @@ namespace HolyNoodle.Utility.DAL
                 }
                 else
                 {
-                    throw new Exception("No connection could open");
+                    throw new Exception("No connection could open", connectionError);
                 }
             }
 
@@ -277,6 +279,21 @@ namespace HolyNoodle.Utility.DAL
             try
             {
                 var tasks = objects.Select(async o => await RefreshBindings(o));
+                await Task.WhenAll(tasks);
+            }
+            catch
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        public async Task<bool> RefreshBindings(List<IDalObject> objects, string name)
+        {
+            try
+            {
+                var tasks = objects.Select(async o => await RefreshBinding(o, name));
                 await Task.WhenAll(tasks);
             }
             catch
