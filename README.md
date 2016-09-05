@@ -1,6 +1,6 @@
 # Utility
 Provide a set of tools to work with. Localisation though Json object file, SQL Server Dal through reflection/attribute using stored procedure (Close to Entity but more database flexible).
-For any kind of information or return on my porjects feel free to send an email to : kbriffaut@gmail.com
+For any kind of information or return on my projects feel free to send an email to kbriffaut@gmail.com
 
 # Dal Documentation
 This Dal can be found in the namespace : HolyNoodle.Utility.Dal.
