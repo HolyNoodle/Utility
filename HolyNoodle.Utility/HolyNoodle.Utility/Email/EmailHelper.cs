@@ -44,6 +44,11 @@ namespace HolyNoodle.Utility.Email
                     IsBodyHtml = true
                 };
 
+                for (var i = 0; i < model.Attachments.Count(); i++)
+                {
+                    message.Attachments.Add(new Attachment(model.Attachments[i]));
+                }
+
                 smtpClient.Send(message);
             }
         }

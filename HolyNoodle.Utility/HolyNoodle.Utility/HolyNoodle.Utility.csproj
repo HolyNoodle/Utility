@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DAL\DalExtensions.cs" />
+    <Compile Include="DAL\IDb.cs" />
     <Compile Include="Utility.cs" />
     <Compile Include="Crypto\PasswordCrypter.cs" />
     <Compile Include="DAL\AzureDB.cs" />

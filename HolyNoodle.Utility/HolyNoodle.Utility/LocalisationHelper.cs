@@ -101,6 +101,21 @@ namespace HolyNoodle.Utility
             }
         }
 
+        public static void AddTranslation(string filePath)
+        {
+            var fi = new FileInfo(filePath);
+            var fileTab = fi.Name.Split('.');
+            var language = fileTab[fileTab.Length - 2];
+
+            if (!_texts.ContainsKey(language))
+            {
+                _texts.Add(language, new Dictionary<string, string>());
+            }
+
+            var translations = File.ReadAllText(fi.FullName);
+            LoadData(translations, language);
+        }
+
         public static IEnumerable<CultureInfo> GetLanguages()
         {
             foreach (var lang in _texts.Keys)
