@@ -8,6 +8,6 @@ namespace HolyNoodle.Utility.DAL
 {
     public interface IDbValidator
     {
-        Tuple<bool, Dictionary<string, string>> Validate(AzureDb context);
+        Tuple<bool, Dictionary<string, string>> Validate(IDb context);
     }
 }

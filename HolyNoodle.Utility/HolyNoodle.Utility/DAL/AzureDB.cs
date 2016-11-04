@@ -237,29 +237,28 @@ namespace HolyNoodle.Utility.DAL
         }
         private T Load<T>(List<DalObjectValue> values) where T : IDalObject
         {
-            T result = (T)Activator.CreateInstance(typeof(T));
+            //Create the object
             var type = typeof(T);
+            var result = Activator.CreateInstance(type) as T;
 
+            if (result == null) throw new Exception("Type " + type.FullName + " could not be instanciate");
+
+            //Parallel because I can set different properties of the same object at the same time
             Parallel.ForEach(type.GetProperties(), property =>
             {
-                var attributeTab = property.GetCustomAttributes(typeof(DalAttribute), false);
-                DalAttribute attribute = null;
-                foreach (var a in attributeTab)
-                {
-                    if (a is DalAttribute)
-                    {
-                        attribute = (DalAttribute)a;
-                        break;
-                    }
-                }
+                //Used faster method to get attribute instead of looping on all the attributes.
+                //Was not logic to do that...
+                var attribute = property.GetCustomAttributes<DalAttribute>().FirstOrDefault();
                 if (attribute != null)
                 {
                     var value = values.FirstOrDefault(v => v.Key == attribute.DBName);
+                    //Check : value exist and is not null
                     if (value != null && value.Value != DBNull.Value)
                     {
                         var objectValue = value.Value;
                         if (attribute.Crypter != null)
                         {
+                            //Convert to decrypted data
                             var instance = Activator.CreateInstance(attribute.Crypter) as ICrypter;
                             objectValue = instance.Decrypt(objectValue);
                         }
@@ -276,7 +275,7 @@ namespace HolyNoodle.Utility.DAL
             return result;
         }
 
-        public async Task<bool> RefreshAllBindings(List<IDalObject> objects)
+        public async Task<bool> RefreshAllBindings(IList<IDalObject> objects)
         {
             try
             {
@@ -291,7 +290,7 @@ namespace HolyNoodle.Utility.DAL
             return true;
         }
 
-        public async Task<bool> RefreshBindings(List<IDalObject> objects, string name)
+        public async Task<bool> RefreshBindings(IList<IDalObject> objects, string name)
         {
             try
             {

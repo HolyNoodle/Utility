@@ -8,8 +8,8 @@ namespace HolyNoodle.Utility.DAL
         void ExecuteNonQuery(IDbProcedure procedure);
         object ExecuteScalar(IDbProcedure procedure);
         List<T> Execute<T>(IDbProcedure procedure) where T : IDalObject;
-        Task<bool> RefreshAllBindings(List<IDalObject> objects);
-        Task<bool> RefreshBindings(List<IDalObject> objects, string name);
+        Task<bool> RefreshAllBindings(IList<IDalObject> objects);
+        Task<bool> RefreshBindings(IList<IDalObject> objects, string name);
         Task<bool> RefreshBindings(IDalObject o);
         Task<bool> RefreshBinding(IDalObject o, string propertyName);
     }
