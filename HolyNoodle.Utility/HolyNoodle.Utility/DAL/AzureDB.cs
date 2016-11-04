@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace HolyNoodle.Utility.DAL
 {
-    public class AzureDb
+    public class AzureDb : IDb
     {
         private static string ConnectionString;
         private static bool UseCache;
@@ -51,6 +51,7 @@ namespace HolyNoodle.Utility.DAL
         }
 
         private string _connectionString;
+        private SqlConnection _connection;
 
         public AzureDb()
         {
@@ -64,20 +65,27 @@ namespace HolyNoodle.Utility.DAL
 
         private SqlConnection Connect(int deph = 0)
         {
-            SqlConnection connection = new SqlConnection(_connectionString);
+            if (_connection != null)
+            {
+                //Maybe send a query "SELECT GETDATE()" to check the connection still works, To be sure, but would slow down the connection
+                if (_connection.State == ConnectionState.Open) return _connection;
+            }
+            _connection = new SqlConnection(_connectionString);
             var attempt = 0;
-            while (connection.State != ConnectionState.Open && attempt < 3)
+            Exception connectionError = null;
+            while (_connection.State != ConnectionState.Open && attempt < 3)
             {
                 try
                 {
                     attempt++;
-                    connection.Open();
+                    _connection.Open();
                 }
                 catch (Exception e)
                 {
+                    connectionError = e;
                 }
             }
-            if (connection.State != ConnectionState.Open)
+            if (_connection.State != ConnectionState.Open)
             {
                 if (deph < 3)
                 {
@@ -85,21 +93,19 @@ namespace HolyNoodle.Utility.DAL
                 }
                 else
                 {
-                    throw new Exception("No connection could open");
+                    throw new Exception("No connection could open", connectionError);
                 }
             }
 
-            return connection;
+            return _connection;
         }
 
         public void ExecuteNonQuery(IDbProcedure procedure)
         {
-            using (var connection = Connect())
-            {
-                var command = CreateCommand(procedure);
-                command.Connection = connection;
-                command.ExecuteNonQuery();
-            }
+            var connection = Connect();
+            var command = CreateCommand(procedure);
+            command.Connection = connection;
+            command.ExecuteNonQuery();
         }
 
 
@@ -107,81 +113,79 @@ namespace HolyNoodle.Utility.DAL
         {
             if (UseCache)
             {
-                var result = CacheProvider.Get<object>(procedure);
-                if (result != null)
+                var cacheResult = CacheProvider.Get<object>(procedure);
+                if (cacheResult != null)
                 {
-                    return result;
+                    return cacheResult;
                 }
             }
-            using (var connection = Connect())
+            var connection = Connect();
+
+            var command = CreateCommand(procedure);
+            command.Connection = connection;
+            var result = command.ExecuteScalar();
+            if (UseCache)
             {
-                var command = CreateCommand(procedure);
-                command.Connection = connection;
-                var result = command.ExecuteScalar();
-                if (UseCache)
-                {
-                    CacheProvider.Cache(procedure, result);
-                }
-                return result;
+                CacheProvider.Cache(procedure, result);
             }
+            return result;
         }
 
         public List<T> Execute<T>(IDbProcedure procedure) where T : IDalObject
         {
             if (UseCache)
             {
-                var result = CacheProvider.Get<List<T>>(procedure);
-                if (result != null)
+                var cacheResult = CacheProvider.Get<List<T>>(procedure);
+                if (cacheResult != null)
                 {
-                    return result;
+                    return cacheResult;
                 }
             }
-            using (var connection = Connect())
+            var connection = Connect();
+
+            var command = CreateCommand(procedure);
+            var result = new ConcurrentBag<T>();
+            var values = new List<List<DalObjectValue>>();
+            command.Connection = connection;
+
+            using (var reader = command.ExecuteReader())
             {
-                var command = CreateCommand(procedure);
-                var result = new ConcurrentBag<T>();
-                var values = new List<List<DalObjectValue>>();
-                command.Connection = connection;
+                if (reader == null) throw new Exception("DataReader is null and can't be browse");
 
-                using (var reader = command.ExecuteReader())
+                if (reader.GetSchemaTable() == null) return result.ToList();
+
+                var columnStructure = new List<string>();
+
+                foreach (DataRow r in reader.GetSchemaTable().Rows)
                 {
-                    if (reader == null) throw new Exception("DataReader is null and can't be browse");
+                    columnStructure.Add(r["ColumnName"].ToString());
+                }
 
-                    if (reader.GetSchemaTable() == null) return result.ToList();
-
-                    var columnStructure = new List<string>();
-
-                    foreach (DataRow r in reader.GetSchemaTable().Rows)
+                while (reader.Read())
+                {
+                    var value = new List<DalObjectValue>();
+                    foreach (var c in columnStructure)
                     {
-                        columnStructure.Add(r["ColumnName"].ToString());
-                    }
-
-                    while (reader.Read())
-                    {
-                        var value = new List<DalObjectValue>();
-                        foreach (var c in columnStructure)
+                        value.Add(new DalObjectValue
                         {
-                            value.Add(new DalObjectValue
-                            {
-                                Key = c,
-                                Value = reader.GetValue(reader.GetOrdinal(c))
-                            });
-                        }
-                        values.Add(value);
+                            Key = c,
+                            Value = reader.GetValue(reader.GetOrdinal(c))
+                        });
                     }
+                    values.Add(value);
                 }
-
-                Parallel.ForEach(values, (v) =>
-                {
-                    result.Add(Load<T>(v));
-                });
-
-                if (UseCache)
-                {
-                    CacheProvider.Cache(procedure, result.ToList());
-                }
-                return result.ToList();
             }
+
+            Parallel.ForEach(values, (v) =>
+            {
+                result.Add(Load<T>(v));
+            });
+
+            if (UseCache)
+            {
+                CacheProvider.Cache(procedure, result.ToList());
+            }
+            return result.ToList();
         }
 
         private SqlCommand CreateCommand(IDbProcedure procedure)
@@ -233,29 +237,28 @@ namespace HolyNoodle.Utility.DAL
         }
         private T Load<T>(List<DalObjectValue> values) where T : IDalObject
         {
-            T result = (T)Activator.CreateInstance(typeof(T));
+            //Create the object
             var type = typeof(T);
+            var result = Activator.CreateInstance(type) as T;
 
+            if (result == null) throw new Exception("Type " + type.FullName + " could not be instanciate");
+
+            //Parallel because I can set different properties of the same object at the same time
             Parallel.ForEach(type.GetProperties(), property =>
             {
-                var attributeTab = property.GetCustomAttributes(typeof(DalAttribute), false);
-                DalAttribute attribute = null;
-                foreach (var a in attributeTab)
-                {
-                    if (a is DalAttribute)
-                    {
-                        attribute = (DalAttribute)a;
-                        break;
-                    }
-                }
+                //Used faster method to get attribute instead of looping on all the attributes.
+                //Was not logic to do that...
+                var attribute = property.GetCustomAttributes<DalAttribute>().FirstOrDefault();
                 if (attribute != null)
                 {
                     var value = values.FirstOrDefault(v => v.Key == attribute.DBName);
+                    //Check : value exist and is not null
                     if (value != null && value.Value != DBNull.Value)
                     {
                         var objectValue = value.Value;
                         if (attribute.Crypter != null)
                         {
+                            //Convert to decrypted data
                             var instance = Activator.CreateInstance(attribute.Crypter) as ICrypter;
                             objectValue = instance.Decrypt(objectValue);
                         }
@@ -272,11 +275,26 @@ namespace HolyNoodle.Utility.DAL
             return result;
         }
 
-        public async Task<bool> RefreshAllBindings(List<IDalObject> objects)
+        public async Task<bool> RefreshAllBindings(IList<IDalObject> objects)
         {
             try
             {
                 var tasks = objects.Select(async o => await RefreshBindings(o));
+                await Task.WhenAll(tasks);
+            }
+            catch
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        public async Task<bool> RefreshBindings(IList<IDalObject> objects, string name)
+        {
+            try
+            {
+                var tasks = objects.Select(async o => await RefreshBinding(o, name));
                 await Task.WhenAll(tasks);
             }
             catch
@@ -301,7 +319,7 @@ namespace HolyNoodle.Utility.DAL
 
         private async Task<bool> RefreshPropertyBinding(IDalObject o, PropertyInfo property, ProcedureBinderAttribute binder = null)
         {
-            if(binder == null) binder = property.GetCustomAttributes<ProcedureBinderAttribute>().FirstOrDefault();
+            if (binder == null) binder = property.GetCustomAttributes<ProcedureBinderAttribute>().FirstOrDefault();
 
             if (binder.BindedSourcePropertyName != string.Empty && binder.BindedProcedure != null && binder.BindedProcedurePropertyName != string.Empty)
             {
@@ -362,7 +380,7 @@ namespace HolyNoodle.Utility.DAL
 
         public void ResetCache(IDbProcedure procedure)
         {
-            if(CacheProvider != null)
+            if (CacheProvider != null)
             {
                 CacheProvider.Cache(procedure, null);
             }

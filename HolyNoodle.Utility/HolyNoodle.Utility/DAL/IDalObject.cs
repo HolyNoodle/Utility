@@ -6,7 +6,6 @@ using System.Runtime.Serialization;
 
 namespace HolyNoodle.Utility.DAL
 {
-  
     public class IDalObject
     {
     }
