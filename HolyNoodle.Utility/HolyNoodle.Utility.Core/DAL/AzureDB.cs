@@ -4,11 +4,11 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Configuration;
-using System.Data;
-using System.Data.SqlClient;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using System.Data.SqlClient;
+using System.Data;
 
 namespace HolyNoodle.Utility.DAL
 {
@@ -31,7 +31,7 @@ namespace HolyNoodle.Utility.DAL
             {
                 UseCache = true;
                 var typeName = ConfigurationManager.AppSettings["holynoodle:CacheProvider"];
-                var type = Assembly.GetExecutingAssembly().GetTypes().FirstOrDefault(t => t.FullName == typeName);
+                var type = Assembly.GetEntryAssembly().GetTypes().FirstOrDefault(t => t.FullName == typeName);
                 if (type != null)
                 {
                     try
@@ -51,6 +51,7 @@ namespace HolyNoodle.Utility.DAL
         }
 
         private string _connectionString;
+        private SqlConnection _connection;
 
         public AzureDb()
         {
@@ -64,24 +65,27 @@ namespace HolyNoodle.Utility.DAL
 
         private SqlConnection Connect(int deph = 0)
         {
-            //In order to sustain a high charge of concurrency we need to create a full new sql connection to database
-            //Random error are raised when high load
-            var connection = new SqlConnection(_connectionString);
+            if (_connection != null)
+            {
+                //Maybe send a query "SELECT GETDATE()" to check the connection still works, To be sure, but would slow down the connection
+                if (_connection.State == ConnectionState.Open) return _connection;
+            }
+            _connection = new SqlConnection(_connectionString);
             var attempt = 0;
             Exception connectionError = null;
-            while (connection.State != ConnectionState.Open && attempt < 3)
+            while (_connection.State != ConnectionState.Open && attempt < 3)
             {
                 try
                 {
                     attempt++;
-                    connection.Open();
+                    _connection.Open();
                 }
                 catch (Exception e)
                 {
                     connectionError = e;
                 }
             }
-            if (connection.State != ConnectionState.Open)
+            if (_connection.State != ConnectionState.Open)
             {
                 if (deph < 3)
                 {
@@ -93,7 +97,7 @@ namespace HolyNoodle.Utility.DAL
                 }
             }
 
-            return connection;
+            return _connection;
         }
 
         public void ExecuteNonQuery(IDbProcedure procedure)
@@ -143,42 +147,25 @@ namespace HolyNoodle.Utility.DAL
             var result = new ConcurrentBag<T>();
             var values = new List<List<DalObjectValue>>();
             command.Connection = connection;
-            try
+
+            using (var reader = command.ExecuteReader())
             {
-                using (var reader = command.ExecuteReader())
+                if (reader == null) throw new Exception("DataReader is null and can't be browse");
+
+                while (reader.Read())
                 {
-                    if (reader == null) throw new Exception("DataReader is null and can't be browse");
-
-                    if (reader.GetSchemaTable() == null) return result.ToList();
-
-                    var columnStructure = new List<string>();
-
-                    foreach (DataRow r in reader.GetSchemaTable().Rows)
+                    var value = new List<DalObjectValue>();
+                    for(var i = 0; i < reader.FieldCount; ++i)
                     {
-                        columnStructure.Add(r["ColumnName"].ToString());
-                    }
-
-                    while (reader.Read())
-                    {
-                        var value = new List<DalObjectValue>();
-                        foreach (var c in columnStructure)
+                        value.Add(new DalObjectValue
                         {
-                            value.Add(new DalObjectValue
-                            {
-                                Key = c,
-                                Value = reader.GetValue(reader.GetOrdinal(c))
-                            });
-                        }
-                        values.Add(value);
+                            Key = reader.GetName(i),
+                            Value = reader.GetValue(i)
+                        });
                     }
+                    values.Add(value);
                 }
             }
-            catch(Exception e)
-            {
-                int i = 0;
-               
-            }
-            
 
             Parallel.ForEach(values, (v) =>
             {
@@ -370,7 +357,7 @@ namespace HolyNoodle.Utility.DAL
             }
             foreach (Type @interface in type.GetInterfaces())
             {
-                if (@interface.IsGenericType)
+                if (@interface.IsGenericParameter)
                 {
                     if (@interface.GetGenericTypeDefinition() == typeof(ICollection<>))
                     {

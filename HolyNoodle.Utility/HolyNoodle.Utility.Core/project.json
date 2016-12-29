@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0-*",
+
+  "dependencies": {
+    "CoreCompat.System.Configuration": "4.2.3-r4",
+    "Microsoft.AspNetCore.Http.Abstractions": "1.1.0",
+    "NETStandard.Library": "1.6.0",
+    "System.Data.SqlClient": "4.1.0",
+    "System.Runtime.Serialization.Json": "4.0.1",
+    "System.Threading.Tasks.Parallel": "4.0.1",
+    "System.Threading.Thread": "4.0.0"
+  },
+
+  "frameworks": {
+    "netstandard1.6": {
+      "imports": "dnxcore50"
+    }
+  }
+}
