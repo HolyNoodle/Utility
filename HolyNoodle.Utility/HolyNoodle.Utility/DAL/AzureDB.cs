@@ -175,12 +175,12 @@ namespace HolyNoodle.Utility.DAL
                     }
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 int i = 0;
-               
+
             }
-            
+
 
             Parallel.ForEach(values, (v) =>
             {
@@ -247,7 +247,7 @@ namespace HolyNoodle.Utility.DAL
                         command.Parameters.Add(new SqlParameter(attribute.DBName, value));
                     }
 
-                    
+
                 }
             }
 
@@ -261,36 +261,43 @@ namespace HolyNoodle.Utility.DAL
 
             if (result == null) throw new Exception("Type " + type.FullName + " could not be instanciate");
 
+            //Usage of FastMember
             var typeAccessor = TypeAccessor.Create(type);
 
             //Parallel because I can set different properties of the same object at the same time
             Parallel.ForEach(typeAccessor.GetMembers(), property =>
             {
+                //FastMember doesn't provide a get method for custom attributes...
+                //Usage of Reflexion for this matter
                 var propertyInfo = type.GetProperty(property.Name);
-                //Used faster method to get attribute instead of looping on all the attributes.
-                //Was not logic to do that...
-                var attribute = propertyInfo.GetCustomAttributes<DalAttribute>().FirstOrDefault();
-                if (attribute != null)
+
+                if (propertyInfo != null)
                 {
-                    var value = values.FirstOrDefault(v => v.Key == attribute.DBName);
-                    //Check : value exist and is not null
-                    if (value != null && value.Value != DBNull.Value)
+                    //Used faster method to get attribute instead of looping on all the attributes.
+                    //Was not logic to do that...
+                    var attribute = propertyInfo.GetCustomAttributes<DalAttribute>().FirstOrDefault();
+                    if (attribute != null)
                     {
-                        var objectValue = value.Value;
-                        if (attribute.Crypter != null)
+                        var value = values.FirstOrDefault(v => v.Key == attribute.DBName);
+                        //Check : value exist and is not null
+                        if (value != null && value.Value != DBNull.Value)
                         {
-                            //Convert to decrypted data
-                            var instance = Activator.CreateInstance(attribute.Crypter) as ICrypter;
-                            objectValue = instance.Decrypt(objectValue);
+                            var objectValue = value.Value;
+                            if (attribute.Crypter != null)
+                            {
+                                //Convert to decrypted data
+                                var instance = Activator.CreateInstance(attribute.Crypter) as ICrypter;
+                                objectValue = instance.Decrypt(objectValue);
+                            }
+                            typeAccessor[result, property.Name] = objectValue;
+                            //property.SetValue(result, objectValue);
                         }
-                        typeAccessor[result, property.Name] = objectValue;
-                        //property.SetValue(result, objectValue);
                     }
-                }
-                var binder = propertyInfo.GetCustomAttributes<ProcedureBinderAttribute>().FirstOrDefault();
-                if (binder != null && binder.AutoBind)
-                {
-                    RefreshPropertyBinding(result, propertyInfo, binder).Wait();
+                    var binder = propertyInfo.GetCustomAttributes<ProcedureBinderAttribute>().FirstOrDefault();
+                    if (binder != null && binder.AutoBind)
+                    {
+                        RefreshPropertyBinding(result, propertyInfo, binder).Wait();
+                    }
                 }
             });
 
