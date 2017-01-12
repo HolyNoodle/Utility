@@ -1,6 +1,7 @@
 ﻿using HolyNoodle.Utility.Dal;
 using Qbox.Common.DAL;
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Configuration;
@@ -232,8 +233,20 @@ namespace HolyNoodle.Utility.DAL
                         var instance = Activator.CreateInstance(attribute.Crypter) as ICrypter;
                         value = instance.Crypt(value);
                     }
+                    if (attribute is IList && value.GetType().IsGenericType)
+                    {
+                        var parameter = new SqlParameter(attribute.DBName, SqlDbType.Structured)
+                        {
+                            Value = ((IList<IDalObject>)value).ConvertToDataTable()
+                        };
+                        command.Parameters.Add(parameter);
+                    }
+                    else
+                    {
+                        command.Parameters.Add(new SqlParameter(attribute.DBName, value));
+                    }
 
-                    command.Parameters.Add(new SqlParameter(attribute.DBName, value));
+                    
                 }
             }
 
