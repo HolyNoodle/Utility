@@ -1,4 +1,5 @@
-﻿using HolyNoodle.Utility.Dal;
+﻿using FastMember;
+using HolyNoodle.Utility.Dal;
 using Qbox.Common.DAL;
 using System;
 using System.Collections.Concurrent;
@@ -247,12 +248,15 @@ namespace HolyNoodle.Utility.DAL
 
             if (result == null) throw new Exception("Type " + type.FullName + " could not be instanciate");
 
+            var typeAccessor = TypeAccessor.Create(type);
+
             //Parallel because I can set different properties of the same object at the same time
-            Parallel.ForEach(type.GetProperties(), property =>
+            Parallel.ForEach(typeAccessor.GetMembers(), property =>
             {
+                var propertyInfo = type.GetProperty(property.Name);
                 //Used faster method to get attribute instead of looping on all the attributes.
                 //Was not logic to do that...
-                var attribute = property.GetCustomAttributes<DalAttribute>().FirstOrDefault();
+                var attribute = propertyInfo.GetCustomAttributes<DalAttribute>().FirstOrDefault();
                 if (attribute != null)
                 {
                     var value = values.FirstOrDefault(v => v.Key == attribute.DBName);
@@ -266,13 +270,14 @@ namespace HolyNoodle.Utility.DAL
                             var instance = Activator.CreateInstance(attribute.Crypter) as ICrypter;
                             objectValue = instance.Decrypt(objectValue);
                         }
-                        property.SetValue(result, objectValue);
+                        typeAccessor[result, property.Name] = objectValue;
+                        //property.SetValue(result, objectValue);
                     }
                 }
-                var binder = property.GetCustomAttributes<ProcedureBinderAttribute>().FirstOrDefault();
+                var binder = propertyInfo.GetCustomAttributes<ProcedureBinderAttribute>().FirstOrDefault();
                 if (binder != null && binder.AutoBind)
                 {
-                    RefreshPropertyBinding(result, property, binder).Wait();
+                    RefreshPropertyBinding(result, propertyInfo, binder).Wait();
                 }
             });
 
