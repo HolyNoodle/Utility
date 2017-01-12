@@ -52,6 +52,17 @@ namespace HolyNoodle.Utility
             }
         }
 
+        public static IDictionary<string, string> GetAllTexts()
+        {
+            var language = Provider.GetLanguage().Name.ToLower().Split('-')[0];
+            if (language == null || !_texts.ContainsKey(language))
+            {
+                language = DefaultLanguage;
+            }
+
+            return _texts[language];
+        }
+
         public static string GetText(string label)
         {
             var language = Provider.GetLanguage().Name.ToLower().Split('-')[0];
