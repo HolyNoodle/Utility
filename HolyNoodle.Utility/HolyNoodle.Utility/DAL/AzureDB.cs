@@ -139,48 +139,48 @@ namespace HolyNoodle.Utility.DAL
                     return cacheResult;
                 }
             }
-            var connection = Connect();
-
-            var command = CreateCommand(procedure);
             var result = new ConcurrentBag<T>();
             var values = new List<List<DalObjectValue>>();
-            command.Connection = connection;
-            try
+            using (var connection = Connect())
             {
-                using (var reader = command.ExecuteReader())
+                var command = CreateCommand(procedure);
+                command.Connection = connection;
+                try
                 {
-                    if (reader == null) throw new Exception("DataReader is null and can't be browse");
-
-                    if (reader.GetSchemaTable() == null) return result.ToList();
-
-                    var columnStructure = new List<string>();
-
-                    foreach (DataRow r in reader.GetSchemaTable().Rows)
+                    using (var reader = command.ExecuteReader())
                     {
-                        columnStructure.Add(r["ColumnName"].ToString());
-                    }
+                        if (reader == null) throw new Exception("DataReader is null and can't be browse");
 
-                    while (reader.Read())
-                    {
-                        var value = new List<DalObjectValue>();
-                        foreach (var c in columnStructure)
+                        if (reader.GetSchemaTable() == null) return result.ToList();
+
+                        var columnStructure = new List<string>();
+
+                        foreach (DataRow r in reader.GetSchemaTable().Rows)
                         {
-                            value.Add(new DalObjectValue
-                            {
-                                Key = c,
-                                Value = reader.GetValue(reader.GetOrdinal(c))
-                            });
+                            columnStructure.Add(r["ColumnName"].ToString());
                         }
-                        values.Add(value);
+
+                        while (reader.Read())
+                        {
+                            var value = new List<DalObjectValue>();
+                            foreach (var c in columnStructure)
+                            {
+                                value.Add(new DalObjectValue
+                                {
+                                    Key = c,
+                                    Value = reader.GetValue(reader.GetOrdinal(c))
+                                });
+                            }
+                            values.Add(value);
+                        }
                     }
                 }
-            }
-            catch (Exception e)
-            {
-                int i = 0;
+                catch (Exception e)
+                {
+                    int i = 0;
 
+                }
             }
-
 
             Parallel.ForEach(values, (v) =>
             {
