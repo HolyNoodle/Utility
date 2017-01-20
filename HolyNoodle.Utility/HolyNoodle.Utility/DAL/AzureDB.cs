@@ -100,10 +100,12 @@ namespace HolyNoodle.Utility.DAL
 
         public void ExecuteNonQuery(IDbProcedure procedure)
         {
-            var connection = Connect();
-            var command = CreateCommand(procedure);
-            command.Connection = connection;
-            command.ExecuteNonQuery();
+            using (var connection = Connect())
+            {
+                var command = CreateCommand(procedure);
+                command.Connection = connection;
+                command.ExecuteNonQuery();
+            }
         }
 
 
@@ -117,16 +119,17 @@ namespace HolyNoodle.Utility.DAL
                     return cacheResult;
                 }
             }
-            var connection = Connect();
-
-            var command = CreateCommand(procedure);
-            command.Connection = connection;
-            var result = command.ExecuteScalar();
-            if (UseCache)
+            using (var connection = Connect())
             {
-                CacheProvider.Cache(procedure, result);
+                var command = CreateCommand(procedure);
+                command.Connection = connection;
+                var result = command.ExecuteScalar();
+                if (UseCache)
+                {
+                    CacheProvider.Cache(procedure, result);
+                }
+                return result;
             }
-            return result;
         }
 
         public List<T> Execute<T>(IDbProcedure procedure) where T : IDalObject
