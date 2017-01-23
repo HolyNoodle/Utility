@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.SqlClient;
 using System.Threading.Tasks;
 
 namespace HolyNoodle.Utility.DAL
@@ -26,14 +27,23 @@ namespace HolyNoodle.Utility.DAL
         {
             return await BindingDb.RefreshAllBindings(list);
         }
-        public static DataTable ConvertToDataTable(this IList<IDalObject> list)
+        public static DataTable ConvertToDataTable(this IEnumerable<IDalObject> list)
         {
-            DataTable table = new DataTable();
-            using (var reader = ObjectReader.Create(list))
-            {
-                table.Load(reader);
-            }
-            return table;
+            
+                using (var table = new DataTable())
+                {
+                
+                    table.Columns.Add("FirstName", typeof(string));
+                    table.Columns.Add("LastName", typeof(string));
+                    table.Columns.Add("IGG", typeof(string));
+
+                    for (int i = 0; i < 100000; i++)
+                    {
+                        table.Rows.Add("Aure" + i, "lien" + i, "igg" + i);
+                    }
+                return table;
+                }
+                
         }
     }
 }

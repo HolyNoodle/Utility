@@ -215,11 +215,14 @@ namespace HolyNoodle.Utility.DAL
             };
 
             var parameters = procedure.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+         
             if (parameters != null && parameters.Count() > 0)
             {
+               
                 foreach (var property in parameters)
                 {
-                    var attributeTab = property.GetCustomAttributes(typeof(DalAttribute), false);
+                   
+                   var attributeTab = property.GetCustomAttributes(typeof(DalAttribute), false);
                     DalAttribute attribute = null;
                     foreach (var a in attributeTab)
                     {
@@ -232,17 +235,32 @@ namespace HolyNoodle.Utility.DAL
                     if (attribute == null) continue;
 
                     object value = property.GetValue(procedure);
+                   
                     if (attribute.Crypter != null)
                     {
                         var instance = Activator.CreateInstance(attribute.Crypter) as ICrypter;
                         value = instance.Crypt(value);
                     }
-                    if (attribute is IList && value.GetType().IsGenericType)
+                    if (value.GetType().GetInterfaces().Any(x =>
+                          x.IsGenericType &&
+                          x.GetGenericTypeDefinition() == typeof(ICollection<>)))
                     {
-                        var parameter = new SqlParameter(attribute.DBName, SqlDbType.Structured)
+                        var propertyType = value.GetType();
+                        var genericArgumentLengthOk = propertyType.GetGenericArguments().Length >= 1;
+                        if (!genericArgumentLengthOk) throw new NotSupportedException();
+                        var genericFirstArgument = propertyType.GetGenericArguments()[0];
+
+                        var genericArumentBaseType = genericFirstArgument.BaseType;
+                        var genericArgumentBaseTypeOk = genericArumentBaseType == typeof(IDalObject);
+                        if(!genericArgumentBaseTypeOk) throw new NotSupportedException();
+
+                        //all check passed so it's an ICollection<IDalObject>
+
+                         var parameter = new SqlParameter(attribute.DBName, SqlDbType.Structured)
                         {
-                            Value = ((IList<IDalObject>)value).ConvertToDataTable()
-                        };
+                            
+                        Value = convertToDataTable(value)
+                         };
                         command.Parameters.Add(parameter);
                     }
                     else
@@ -410,6 +428,40 @@ namespace HolyNoodle.Utility.DAL
             return false;
         }
 
+        public T GetInstance<T>(Type t)
+        {
+            return (T)(Activator.CreateInstance(t));
+        }
+
+        public DataTable convertToDataTable (object collection)
+        {
+            using (var table = new DataTable())
+            {
+                var properties = collection.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+                foreach (var property in properties)
+                {
+                    var attribute = property.GetCustomAttributes<DalAttribute>().FirstOrDefault();
+                    if (attribute != null)
+                    {
+                        // var value = values.FirstOrDefault(v => v.Key == attribute.DBName);
+                    }
+                    table.Columns.Add("FirstName", typeof(string));
+                    table.Columns.Add("LastName", typeof(string));
+                    table.Columns.Add("IGG", typeof(string));
+
+                    for (int i = 0; i < 100000; i++)
+                    {
+                        table.Rows.Add("Aure" + i, "lien" + i, "igg" + i);
+                    }
+                    return table;
+                }
+            }
+
+            DataTable dt = new DataTable();
+
+            return dt;
+        }
+
         public void ResetCache(IDbProcedure procedure)
         {
             if (CacheProvider != null)
@@ -417,5 +469,7 @@ namespace HolyNoodle.Utility.DAL
                 CacheProvider.Cache(procedure, null);
             }
         }
+
+
     }
 }
