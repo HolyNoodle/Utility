@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Qbox.Common.DAL
+namespace HolyNoodle.Utility.Common.DAL
 {
     public class AzureDbValidationException : Exception
     {
