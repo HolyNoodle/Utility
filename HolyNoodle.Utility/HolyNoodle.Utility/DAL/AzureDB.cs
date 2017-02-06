@@ -1,7 +1,7 @@
 ﻿using FastMember;
 using HolyNoodle.Utility.Dal;
-using Qbox.Common.DAL;
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Configuration;
@@ -99,10 +99,12 @@ namespace HolyNoodle.Utility.DAL
 
         public void ExecuteNonQuery(IDbProcedure procedure)
         {
-            var connection = Connect();
-            var command = CreateCommand(procedure);
-            command.Connection = connection;
-            command.ExecuteNonQuery();
+            using (var connection = Connect())
+            {
+                var command = CreateCommand(procedure);
+                command.Connection = connection;
+                command.ExecuteNonQuery();
+            }
         }
 
 
@@ -116,16 +118,17 @@ namespace HolyNoodle.Utility.DAL
                     return cacheResult;
                 }
             }
-            var connection = Connect();
-
-            var command = CreateCommand(procedure);
-            command.Connection = connection;
-            var result = command.ExecuteScalar();
-            if (UseCache)
+            using (var connection = Connect())
             {
-                CacheProvider.Cache(procedure, result);
+                var command = CreateCommand(procedure);
+                command.Connection = connection;
+                var result = command.ExecuteScalar();
+                if (UseCache)
+                {
+                    CacheProvider.Cache(procedure, result);
+                }
+                return result;
             }
-            return result;
         }
 
         public List<T> Execute<T>(IDbProcedure procedure) where T : IDalObject
@@ -138,48 +141,48 @@ namespace HolyNoodle.Utility.DAL
                     return cacheResult;
                 }
             }
-            var connection = Connect();
-
-            var command = CreateCommand(procedure);
             var result = new ConcurrentBag<T>();
             var values = new List<List<DalObjectValue>>();
-            command.Connection = connection;
-            try
+            using (var connection = Connect())
             {
-                using (var reader = command.ExecuteReader())
+                var command = CreateCommand(procedure);
+                command.Connection = connection;
+                try
                 {
-                    if (reader == null) throw new Exception("DataReader is null and can't be browse");
-
-                    if (reader.GetSchemaTable() == null) return result.ToList();
-
-                    var columnStructure = new List<string>();
-
-                    foreach (DataRow r in reader.GetSchemaTable().Rows)
+                    using (var reader = command.ExecuteReader())
                     {
-                        columnStructure.Add(r["ColumnName"].ToString());
-                    }
+                        if (reader == null) throw new Exception("DataReader is null and can't be browse");
 
-                    while (reader.Read())
-                    {
-                        var value = new List<DalObjectValue>();
-                        foreach (var c in columnStructure)
+                        if (reader.GetSchemaTable() == null) return result.ToList();
+
+                        var columnStructure = new List<string>();
+
+                        foreach (DataRow r in reader.GetSchemaTable().Rows)
                         {
-                            value.Add(new DalObjectValue
-                            {
-                                Key = c,
-                                Value = reader.GetValue(reader.GetOrdinal(c))
-                            });
+                            columnStructure.Add(r["ColumnName"].ToString());
                         }
-                        values.Add(value);
+
+                        while (reader.Read())
+                        {
+                            var value = new List<DalObjectValue>();
+                            foreach (var c in columnStructure)
+                            {
+                                value.Add(new DalObjectValue
+                                {
+                                    Key = c,
+                                    Value = reader.GetValue(reader.GetOrdinal(c))
+                                });
+                            }
+                            values.Add(value);
+                        }
                     }
                 }
+                catch (Exception e)
+                {
+                    int i = 0;
+
+                }
             }
-            catch(Exception e)
-            {
-                int i = 0;
-               
-            }
-            
 
             Parallel.ForEach(values, (v) =>
             {
@@ -233,8 +236,20 @@ namespace HolyNoodle.Utility.DAL
                         var instance = Activator.CreateInstance(attribute.Crypter) as ICrypter;
                         value = instance.Crypt(value);
                     }
+                    if (attribute is IList && value.GetType().IsGenericType)
+                    {
+                        var parameter = new SqlParameter(attribute.DBName, SqlDbType.Structured)
+                        {
+                            Value = ((IList<IDalObject>)value).ConvertToDataTable()
+                        };
+                        command.Parameters.Add(parameter);
+                    }
+                    else
+                    {
+                        command.Parameters.Add(new SqlParameter(attribute.DBName, value));
+                    }
 
-                    command.Parameters.Add(new SqlParameter(attribute.DBName, value));
+
                 }
             }
 
@@ -248,36 +263,43 @@ namespace HolyNoodle.Utility.DAL
 
             if (result == null) throw new Exception("Type " + type.FullName + " could not be instanciate");
 
+            //Usage of FastMember
             var typeAccessor = TypeAccessor.Create(type);
 
             //Parallel because I can set different properties of the same object at the same time
             Parallel.ForEach(typeAccessor.GetMembers(), property =>
             {
+                //FastMember doesn't provide a get method for custom attributes...
+                //Usage of Reflexion for this matter
                 var propertyInfo = type.GetProperty(property.Name);
-                //Used faster method to get attribute instead of looping on all the attributes.
-                //Was not logic to do that...
-                var attribute = propertyInfo.GetCustomAttributes<DalAttribute>().FirstOrDefault();
-                if (attribute != null)
+
+                if (propertyInfo != null)
                 {
-                    var value = values.FirstOrDefault(v => v.Key == attribute.DBName);
-                    //Check : value exist and is not null
-                    if (value != null && value.Value != DBNull.Value)
+                    //Used faster method to get attribute instead of looping on all the attributes.
+                    //Was not logic to do that...
+                    var attribute = propertyInfo.GetCustomAttributes<DalAttribute>().FirstOrDefault();
+                    if (attribute != null)
                     {
-                        var objectValue = value.Value;
-                        if (attribute.Crypter != null)
+                        var value = values.FirstOrDefault(v => v.Key == attribute.DBName);
+                        //Check : value exist and is not null
+                        if (value != null && value.Value != DBNull.Value)
                         {
-                            //Convert to decrypted data
-                            var instance = Activator.CreateInstance(attribute.Crypter) as ICrypter;
-                            objectValue = instance.Decrypt(objectValue);
+                            var objectValue = value.Value;
+                            if (attribute.Crypter != null)
+                            {
+                                //Convert to decrypted data
+                                var instance = Activator.CreateInstance(attribute.Crypter) as ICrypter;
+                                objectValue = instance.Decrypt(objectValue);
+                            }
+                            typeAccessor[result, property.Name] = objectValue;
+                            //property.SetValue(result, objectValue);
                         }
-                        typeAccessor[result, property.Name] = objectValue;
-                        //property.SetValue(result, objectValue);
                     }
-                }
-                var binder = propertyInfo.GetCustomAttributes<ProcedureBinderAttribute>().FirstOrDefault();
-                if (binder != null && binder.AutoBind)
-                {
-                    RefreshPropertyBinding(result, propertyInfo, binder).Wait();
+                    var binder = propertyInfo.GetCustomAttributes<ProcedureBinderAttribute>().FirstOrDefault();
+                    if (binder != null && binder.AutoBind)
+                    {
+                        RefreshPropertyBinding(result, propertyInfo, binder).Wait();
+                    }
                 }
             });
 

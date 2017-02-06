@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Qbox.Common.DAL
+namespace HolyNoodle.Utility.DAL
 {
     public class AzureDbValidationException : Exception
     {

@@ -32,11 +32,13 @@ namespace HolyNoodle.Utility.Email
                 smtpClient.UseDefaultCredentials = true;
                 smtpClient.Credentials = new NetworkCredential(Login, Password);
 
+                model.From = model.From ?? new MailAddress(Host);
+
                 foreach (var property in model.GetType().GetProperties())
                 {
                     model.Body = model.Body.Replace("#=" + property.Name + "#", property.GetValue(model).ToString());
                 }
-
+                
                 var message = new MailMessage(model.From, model.To)
                 {
                     Subject = model.Title,

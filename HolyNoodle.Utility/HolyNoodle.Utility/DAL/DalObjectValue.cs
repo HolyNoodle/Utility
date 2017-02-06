@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 
-namespace Qbox.Common.DAL
+namespace HolyNoodle.Utility.DAL
 {
     public class DalObjectValue
     {

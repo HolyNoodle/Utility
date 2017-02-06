@@ -1,5 +1,7 @@
-﻿using System;
+﻿using FastMember;
+using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Threading.Tasks;
 
 namespace HolyNoodle.Utility.DAL
@@ -23,6 +25,15 @@ namespace HolyNoodle.Utility.DAL
         public static async Task<bool> RefreshBindings(this IList<IDalObject> list)
         {
             return await BindingDb.RefreshAllBindings(list);
+        }
+        public static DataTable ConvertToDataTable(this IList<IDalObject> list)
+        {
+            DataTable table = new DataTable();
+            using (var reader = ObjectReader.Create(list))
+            {
+                table.Load(reader);
+            }
+            return table;
         }
     }
 }

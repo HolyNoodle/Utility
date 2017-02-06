@@ -10,8 +10,8 @@
     <projectUrl>https://github.com/HolyNoodle/Utility</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
-    <releaseNotes>Update database connection system. Using singleton object instead of opening a new connection to the database. Optimize greatly perfs</releaseNotes>
-    <copyright>Copyright 2016</copyright>
+    <releaseNotes>Refacto 3 namespaces</releaseNotes>
+    <copyright>Copyright 2017</copyright>
     <tags>DAL Azure SQL Server Stored Procedure Entity Localisation</tags>
   </metadata>
 </package>

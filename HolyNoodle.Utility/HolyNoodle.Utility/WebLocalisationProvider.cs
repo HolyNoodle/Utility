@@ -11,11 +11,11 @@ namespace HolyNoodle.Utility
     {
         public CultureInfo GetLanguage()
         {
-            if(System.Web.HttpContext.Current.Session["holynoodle:LocalisationLanguage"] != null)
+            if (System.Web.HttpContext.Current.Session != null && System.Web.HttpContext.Current.Session["holynoodle:LocalisationLanguage"] != null)
             {
                 return (CultureInfo)System.Web.HttpContext.Current.Session["holynoodle:LocalisationLanguage"];
             }
-            if (System.Web.HttpContext.Current.Request.UserLanguages != null && System.Web.HttpContext.Current.Request.UserLanguages.Any())
+            if (System.Web.HttpContext.Current.Request != null && System.Web.HttpContext.Current.Request.UserLanguages != null && System.Web.HttpContext.Current.Request.UserLanguages.Any())
             {
                 return new CultureInfo(System.Web.HttpContext.Current.Request.UserLanguages[0]);
             }
