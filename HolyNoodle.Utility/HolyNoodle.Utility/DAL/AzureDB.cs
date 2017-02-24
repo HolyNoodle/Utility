@@ -179,8 +179,7 @@ namespace HolyNoodle.Utility.DAL
                 }
                 catch (Exception e)
                 {
-                    int i = 0;
-
+                    throw e;
                 }
             }
 
