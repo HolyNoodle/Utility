@@ -63,6 +63,142 @@ namespace HolyNoodle.Utility.DAL
             _connectionString = cs;
         }
 
+
+
+        private async Task<SqlConnection> ConnectAsync(int deph = 0)
+        {
+            //In order to sustain a high charge of concurrency we need to create a full new sql connection to database
+            //Random error are raised when high load
+            var connection = new SqlConnection(_connectionString);
+            var attempt = 0;
+            Exception connectionError = null;
+            while (connection.State != ConnectionState.Open && attempt < 3)
+            {
+                try
+                {
+                    attempt++;
+                    await connection.OpenAsync();
+                }
+                catch (Exception e)
+                {
+                    connectionError = e;
+                }
+            }
+            if (connection.State != ConnectionState.Open)
+            {
+                if (deph < 3)
+                {
+                    return await ConnectAsync(deph + 1);
+                }
+                else
+                {
+                    throw new Exception("No connection could open", connectionError);
+                }
+            }
+
+            return connection;
+        }
+
+
+        public async Task ExecuteNonQueryAsync(IDbProcedure procedure)
+        {
+            using (var connection = await ConnectAsync())
+            {
+                var command = CreateCommand(procedure);
+                command.Connection = connection;
+                await command.ExecuteNonQueryAsync();
+            }
+        }
+
+
+        public async Task<object> ExecuteScalarAsync(IDbProcedure procedure)
+        {
+            if (UseCache)
+            {
+                var cacheResult = CacheProvider.Get<object>(procedure);
+                if (cacheResult != null)
+                {
+                    return cacheResult;
+                }
+            }
+            using (var connection = await ConnectAsync())
+            {
+                var command = CreateCommand(procedure);
+                command.Connection = connection;
+                var result = await command.ExecuteScalarAsync();
+                if (UseCache)
+                {
+                    CacheProvider.Cache(procedure, result);
+                }
+                return result;
+            }
+        }
+
+        public async Task<List<T>> ExecuteAsync<T>(IDbProcedure procedure) where T : IDalObject
+        {
+            if (UseCache)
+            {
+                var cacheResult = CacheProvider.Get<List<T>>(procedure);
+                if (cacheResult != null)
+                {
+                    return cacheResult;
+                }
+            }
+            var result = new ConcurrentBag<T>();
+            var values = new List<List<DalObjectValue>>();
+            using (var connection = await ConnectAsync())
+            {
+                var command = CreateCommand(procedure);
+                command.Connection = connection;
+                try
+                {
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        if (reader == null) throw new Exception("DataReader is null and can't be browse");
+
+                        if (reader.GetSchemaTable() == null) return result.ToList();
+
+                        var columnStructure = new List<string>();
+
+                        foreach (DataRow r in reader.GetSchemaTable().Rows)
+                        {
+                            columnStructure.Add(r["ColumnName"].ToString());
+                        }
+
+                        while (reader.Read())
+                        {
+                            var value = new List<DalObjectValue>();
+                            foreach (var c in columnStructure)
+                            {
+                                value.Add(new DalObjectValue
+                                {
+                                    Key = c,
+                                    Value = reader.GetValue(reader.GetOrdinal(c))
+                                });
+                            }
+                            values.Add(value);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    int i = 0;
+
+                }
+            }
+
+            Parallel.ForEach(values, (v) =>
+            {
+                result.Add(Load<T>(v));
+            });
+
+            if (UseCache)
+            {
+                CacheProvider.Cache(procedure, result.ToList());
+            }
+            return result.ToList();
+        }
+
         private SqlConnection Connect(int deph = 0)
         {
             //In order to sustain a high charge of concurrency we need to create a full new sql connection to database
