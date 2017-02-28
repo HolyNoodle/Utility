@@ -15,7 +15,7 @@ namespace HolyNoodle.Utility
     public static class LocalisationHelper
     {
         private static Dictionary<string, Dictionary<string, string>> _texts;
-        private static Dictionary<string, FileInfo> _files;
+        private static Dictionary<string, List<FileInfo>> _files;
 
         public static string DefaultLanguage { get; private set; }
 
@@ -25,15 +25,15 @@ namespace HolyNoodle.Utility
 
         private static void LoadFile(string language, FileInfo languageFile)
         {
-            _files.Add(language, languageFile);
+            if(!_files.ContainsKey(language))
+            {
+                _files.Add(language, new List<FileInfo>());
+            }
+            _files[language].Add(languageFile);
 
             if (!_texts.ContainsKey(language))
             {
                 _texts.Add(language, new Dictionary<string, string>());
-            }
-            else
-            {
-                _texts[language].Clear();
             }
 
             var translations = File.ReadAllText(languageFile.FullName);
@@ -42,13 +42,19 @@ namespace HolyNoodle.Utility
 
         private static void LoadData(string text, string language)
         {
-            _texts[language].Clear();
             var regEx = new Regex("\\\"([\\w]+)\"[\\s]*[:][\\s]*\"(.*)\\\"");
             foreach (var match in regEx.Matches(text))
             {
                 var key = ((Match)match).Groups[1].Value;
                 var value = ((Match)match).Groups[2].Value;
-                _texts[language].Add(key, value);
+                if (_texts[language].ContainsKey(key))
+                {
+                    _texts[language][key] = value;
+                }
+                else
+                {
+                    _texts[language].Add(key, value);
+                }
             }
         }
 
@@ -87,7 +93,7 @@ namespace HolyNoodle.Utility
         public static void Init(string defaultLanguage, ApplicationType applicationType = ApplicationType.StandAlone, string languageFileDirectory = "")
         {
             _texts = new Dictionary<string, Dictionary<string, string>>();
-            _files = new Dictionary<string, FileInfo>();
+            _files = new Dictionary<string, List<FileInfo>>();
             DefaultLanguage = defaultLanguage;
             switch (applicationType)
             {
@@ -103,7 +109,7 @@ namespace HolyNoodle.Utility
             if (languageFileDirectory != string.Empty)
                 filesPath = languageFileDirectory;
 
-            foreach (var file in Directory.GetFiles(filesPath, "language.*.json", SearchOption.AllDirectories))
+            foreach (var file in Directory.GetFiles(filesPath, "*language.*.json", SearchOption.AllDirectories))
             {
                 var fi = new FileInfo(file);
                 var fileTab = fi.Name.Split('.');
