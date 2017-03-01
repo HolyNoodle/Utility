@@ -165,7 +165,7 @@ namespace HolyNoodle.Utility.DAL
                             columnStructure.Add(r["ColumnName"].ToString());
                         }
 
-                        while (reader.Read())
+                        while (await reader.ReadAsync())
                         {
                             var value = new List<DalObjectValue>();
                             foreach (var c in columnStructure)
