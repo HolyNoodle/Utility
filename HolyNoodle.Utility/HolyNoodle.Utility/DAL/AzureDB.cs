@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -239,7 +240,15 @@ namespace HolyNoodle.Utility.DAL
             {
                 var command = CreateCommand(procedure);
                 command.Connection = connection;
-                command.ExecuteNonQuery();
+                try
+                {
+                    command.ExecuteNonQuery();
+                }
+                catch(Exception ex)
+                {
+                    Trace.TraceError(ex.Message + Environment.NewLine + ex.StackTrace);
+                    throw ex;
+                }
             }
         }
 
@@ -258,12 +267,20 @@ namespace HolyNoodle.Utility.DAL
             {
                 var command = CreateCommand(procedure);
                 command.Connection = connection;
-                var result = command.ExecuteScalar();
-                if (UseCache)
+                try
                 {
-                    CacheProvider.Cache(procedure, result);
+                    var result = command.ExecuteScalar();
+                    if (UseCache)
+                    {
+                        CacheProvider.Cache(procedure, result);
+                    }
+                    return result;
                 }
-                return result;
+                catch (Exception ex)
+                {
+                    Trace.TraceError(ex.Message + Environment.NewLine + ex.StackTrace);
+                    throw ex;
+                }
             }
         }
 
@@ -313,9 +330,10 @@ namespace HolyNoodle.Utility.DAL
                         }
                     }
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
-                    throw e;
+                    Trace.TraceError(ex.Message + Environment.NewLine + ex.StackTrace);
+                    throw ex;
                 }
             }
 
