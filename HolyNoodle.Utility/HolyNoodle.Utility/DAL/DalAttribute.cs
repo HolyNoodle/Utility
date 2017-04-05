@@ -6,6 +6,11 @@ namespace HolyNoodle.Utility.DAL
 {
     public class DalAttribute : Attribute
     {
+        public DalAttribute()
+        {
+            DBName = null;
+        }
+
         public DalAttribute(string dbName)
         {
             DBName = dbName;

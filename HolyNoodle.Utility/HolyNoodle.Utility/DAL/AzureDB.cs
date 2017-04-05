@@ -391,7 +391,7 @@ namespace HolyNoodle.Utility.DAL
                     }
                     if (attribute is IList && value.GetType().IsGenericType)
                     {
-                        var parameter = new SqlParameter(attribute.DBName, SqlDbType.Structured)
+                        var parameter = new SqlParameter(attribute.DBName != null ? attribute.DBName : property.Name, SqlDbType.Structured)
                         {
                             Value = ((IList<IDalObject>)value).ConvertToDataTable()
                         };
@@ -399,7 +399,7 @@ namespace HolyNoodle.Utility.DAL
                     }
                     else
                     {
-                        command.Parameters.Add(new SqlParameter(attribute.DBName, value));
+                        command.Parameters.Add(new SqlParameter(attribute.DBName != null ? attribute.DBName : property.Name, value));
                     }
 
 
@@ -433,7 +433,8 @@ namespace HolyNoodle.Utility.DAL
                     var attribute = propertyInfo.GetCustomAttributes<DalAttribute>().FirstOrDefault();
                     if (attribute != null)
                     {
-                        var value = values.FirstOrDefault(v => v.Key == attribute.DBName);
+                        //If no name of the attribute use the property name
+                        var value = values.FirstOrDefault(v => (attribute.DBName != null && v.Key == attribute.DBName) || v.Key == propertyInfo.Name);
                         //Check : value exist and is not null
                         if (value != null && value.Value != DBNull.Value)
                         {
