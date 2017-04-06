@@ -53,6 +53,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Console\ConsoleDisplayer.cs" />
     <Compile Include="DAL\DalExtensions.cs" />
     <Compile Include="DAL\IDb.cs" />
     <Compile Include="Utility.cs" />
