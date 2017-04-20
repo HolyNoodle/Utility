@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -15,6 +16,20 @@ namespace HolyNoodle.Utility
                 throw new ArgumentNullException("type");
             }
             return type.IsValueType || type == typeof(string);
+        }
+
+        public static MethodInfo GetMethod(this Type type, string name, bool generic)
+        {
+            if (type == null)
+            {
+                throw new ArgumentNullException("type");
+            }
+            if (String.IsNullOrEmpty(name))
+            {
+                throw new ArgumentNullException("name");
+            }
+            return type.GetMethods()
+                .FirstOrDefault(method => method.Name == name & method.IsGenericMethod == generic);
         }
 
         public static Type GetGenericTypeDefintion(Type type)
