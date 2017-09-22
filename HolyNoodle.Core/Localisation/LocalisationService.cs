@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -13,12 +14,10 @@ public class LocalisationService : ILocalisationService
     private Dictionary<string, List<FileInfo>> _files;
     
     public static string DefaultLanguage { get; set; }
-    internal IRequestCultureProvider _requestCultureProvider;
     internal IHttpContextAccessor _httpContextAccessor;
 
-    public LocalisationService(IHttpContextAccessor httpContextAccessor, IRequestCultureProvider requestCultureProvider)
+    public LocalisationService(IHttpContextAccessor httpContextAccessor)
     {
-        _requestCultureProvider = requestCultureProvider;
         _httpContextAccessor = httpContextAccessor;
     }
 
@@ -80,10 +79,9 @@ public class LocalisationService : ILocalisationService
     private async Task<string> DetermineLanguage()
     {
         var language = DefaultLanguage;
-        if(_requestCultureProvider != null && _httpContextAccessor != null)
+        if(CultureInfo.CurrentUICulture != null)
         {
-            var result = (await _requestCultureProvider.DetermineProviderCultureResult(_httpContextAccessor.HttpContext));
-            language =  result.Cultures.First().ToString();
+            language =  CultureInfo.CurrentUICulture.Name;
         }
         if (string.IsNullOrEmpty(language) || !_texts.ContainsKey(language))
         {

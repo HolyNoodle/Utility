@@ -3,9 +3,9 @@ namespace Microsoft.Extensions.DependencyInjection
     // Extension method used to add the middleware to the HTTP request pipeline.
     public static class LocalisationExtensions
     {
-        public static IServiceCollection UseLocalisation(this IServiceCollection builder)
+        public static IServiceCollection AddHolyNoodleLocalisation(this IServiceCollection services)
         {
-            return builder.AddSingleton<ILocalisationService, LocalisationService>();
+            return services.AddSingleton<ILocalisationService, LocalisationService>();
         }
     }
 }
