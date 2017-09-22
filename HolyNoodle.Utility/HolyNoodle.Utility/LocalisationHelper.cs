@@ -92,30 +92,7 @@ namespace HolyNoodle.Utility
 
         public static void Init(string defaultLanguage, ApplicationType applicationType = ApplicationType.StandAlone, string languageFileDirectory = "")
         {
-            _texts = new Dictionary<string, Dictionary<string, string>>();
-            _files = new Dictionary<string, List<FileInfo>>();
-            DefaultLanguage = defaultLanguage;
-            switch (applicationType)
-            {
-                case ApplicationType.Web:
-                    Provider = new WebLocalisationProvider();
-                    break;
-                default:
-                    Provider = new LocalisationProvider();
-                    break;
-            }
-
-            var filesPath = Utility.AssemblyDirectory;
-            if (languageFileDirectory != string.Empty)
-                filesPath = languageFileDirectory;
-
-            foreach (var file in Directory.GetFiles(filesPath, "*language.*.json", SearchOption.AllDirectories))
-            {
-                var fi = new FileInfo(file);
-                var fileTab = fi.Name.Split('.');
-                var language = fileTab[fileTab.Length - 2];
-                LoadFile(language, fi);
-            }
+            
         }
 
         public static void AddTranslation(string filePath)
